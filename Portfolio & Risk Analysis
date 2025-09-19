@@ -1,0 +1,102 @@
+-- Members table: pension members
+CREATE TABLE Members (
+    member_id INT PRIMARY KEY,
+    name VARCHAR(100),
+    date_of_birth DATE,
+    join_date DATE,
+    contribution_rate DECIMAL(5,2) -- % of salary
+);
+
+-- Contributions: member contributions over time
+CREATE TABLE Contributions (
+    contrib_id INT PRIMARY KEY,
+    member_id INT,
+    date DATE,
+    amount DECIMAL(12,2),
+    FOREIGN KEY (member_id) REFERENCES Members(member_id)
+);
+
+-- Investments: available assets
+CREATE TABLE Investments (
+    investment_id INT PRIMARY KEY,
+    asset_class VARCHAR(50), -- Equity, Bonds, Real Estate, PE
+    region VARCHAR(50),
+    risk_level VARCHAR(20) -- Low, Medium, High
+);
+
+-- Holdings: what each member holds
+CREATE TABLE Holdings (
+    holding_id INT PRIMARY KEY,
+    member_id INT,
+    investment_id INT,
+    units DECIMAL(12,2),
+    purchase_date DATE,
+    FOREIGN KEY (member_id) REFERENCES Members(member_id),
+    FOREIGN KEY (investment_id) REFERENCES Investments(investment_id)
+);
+
+-- Returns: daily returns for each investment
+CREATE TABLE Returns (
+    return_id INT PRIMARY KEY,
+    investment_id INT,
+    date DATE,
+    daily_return DECIMAL(6,4),
+    FOREIGN KEY (investment_id) REFERENCES Investments(investment_id)
+);
+-- Members
+INSERT INTO Members VALUES
+(1, 'Alice Johnson', '1980-05-12', '2010-01-01', 0.08),
+(2, 'Brian Chen', '1975-03-22', '2012-06-15', 0.10),
+(3, 'Carla Singh', '1990-11-03', '2018-09-01', 0.07);
+
+-- Contributions
+INSERT INTO Contributions VALUES
+(1, 1, '2024-01-15', 1500.00),
+(2, 1, '2024-02-15', 1550.00),
+(3, 2, '2024-01-15', 2000.00),
+(4, 3, '2024-02-01', 1200.00);
+
+-- Investments
+INSERT INTO Investments VALUES
+(101, 'Equity', 'North America', 'High'),
+(102, 'Bonds', 'Global', 'Low'),
+(103, 'Real Estate', 'Europe', 'Medium'),
+(104, 'Private Equity', 'Asia', 'High');
+
+-- Holdings
+INSERT INTO Holdings VALUES
+(1, 1, 101, 50, '2023-05-01'),
+(2, 1, 102, 100, '2023-06-01'),
+(3, 2, 103, 200, '2022-09-01'),
+(4, 3, 104, 75, '2024-01-01');
+
+-- Returns (daily)
+INSERT INTO Returns VALUES
+(1, 101, '2024-02-15', 0.0020),  -- Equity +0.2%
+(2, 101, '2024-02-16', -0.0010), -- Equity -0.1%
+(3, 102, '2024-02-15', 0.0005),  -- Bonds +0.05%
+(4, 103, '2024-02-15', 0.0012),  -- RE +0.12%
+(5, 104, '2024-02-15', 0.0030);  -- PE +0.3%
+
+SELECT 
+DATE_TRUNC('month', date) AS month,
+    SUM(amount) AS total_contributions
+FROM Contributions
+GROUP BY month
+ORDER BY month;
+
+SELECT 
+    i.asset_class,
+    SUM(h.units) AS total_units
+FROM Holdings h
+JOIN Investments i ON h.investment_id = i.investment_id
+GROUP BY i.asset_class
+ORDER BY total_units DESC;
+
+SELECT 
+    ROUND(
+        (SUM(CASE WHEN i.risk_level = 'High' THEN h.units ELSE 0 END) * 1.0 /
+         SUM(h.units)) * 100, 2
+    ) AS high_risk_exposure_pct
+FROM Holdings h
+JOIN Investments i ON h.investment_id = i.investment_id;
